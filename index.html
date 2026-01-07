@@ -166,7 +166,7 @@ body {
       <div class="logo-circle"></div>
       <span>INTUITION</span>
     </div>
-    <button class="connect-btn" id="connectBtn">Connect</button>
+    <button class="connect-btn" id="connectBtn">Connect Wallet</button>
   </div>
 
   <div class="chat-body" id="chatBody"></div>
@@ -197,81 +197,69 @@ let provider, signer, userAddress;
 let subscribed = false;
 
 /* ================= HELPERS ================= */
-function time() {
-  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-function addMessage(side, text) {
-  const msg = document.createElement("div");
-  msg.className = "message " + side;
-  if (side === "left") {
-    const avatar = document.createElement("div");
-    avatar.className = "avatar";
-    avatar.textContent = "I";
-    msg.appendChild(avatar);
-  }
-  const bubble = document.createElement("div");
-  bubble.className = "bubble";
-  bubble.innerHTML = `${text}<div class="time">${time()}</div>`;
+function time() { return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+function addMessage(side,text) {
+  const msg=document.createElement("div");
+  msg.className="message "+side;
+  if(side==="left"){ const avatar=document.createElement("div"); avatar.className="avatar"; avatar.textContent="I"; msg.appendChild(avatar); }
+  const bubble=document.createElement("div");
+  bubble.className="bubble";
+  bubble.innerHTML=`${text}<div class="time">${time()}</div>`;
   msg.appendChild(bubble);
   chatBody.appendChild(msg);
-  chatBody.scrollTop = chatBody.scrollHeight;
+  chatBody.scrollTop=chatBody.scrollHeight;
 }
 
 /* ================= INITIAL MESSAGE ================= */
-addMessage("left", "👋 Welcome to Intuition Support. Connect your wallet to start.");
+addMessage("left","👋 Welcome to Intuition Support. Connect your wallet to start.");
 
-/* ================= WALLET CONNECT ================= */
-connectBtn.onclick = async () => {
+/* ================= MULTI-WALLET CONNECT ================= */
+async function connectWallet() {
   try {
-    if (!window.ethereum) { addMessage("left", "❌ MetaMask not detected."); return; }
-    provider = new ethers.BrowserProvider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
+    // 1️⃣ Browser wallet (MetaMask, Coinbase, etc)
+    if(window.ethereum){
+      provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+    } else { addMessage("left","❌ No compatible wallet found."); return; }
+
     signer = await provider.getSigner();
     userAddress = (await signer.getAddress()).toLowerCase();
-    connectBtn.textContent = userAddress.slice(0,6) + "..." + userAddress.slice(-4);
-
-    // Check subscription
+    connectBtn.textContent = userAddress.slice(0,6)+"..."+userAddress.slice(-4);
+    addMessage("left","🔗 Wallet connected.");
     await checkSubscription();
+
   } catch(e) { console.error(e); addMessage("left","⚠️ Wallet connection failed."); }
-};
+}
+
+connectBtn.onclick = connectWallet;
 
 /* ================= CHECK SUBSCRIPTION ================= */
-async function checkSubscription() {
-  if (userAddress === ADMIN_WALLET) {
-    subscribed = true;
-    addMessage("left","👑 Admin access granted. You can chat freely.");
-    return;
-  }
-
+async function checkSubscription(){
+  if(userAddress===ADMIN_WALLET){ subscribed=true; addMessage("left","👑 Admin access granted. You can chat freely."); return; }
   try {
-    const res = await fetch(`${BACKEND_URL}/access/${userAddress}`);
-    if(res.ok) {
-      const data = await res.json();
-      subscribed = data.access;
-      if(subscribed) addMessage("left","✅ Subscription active. You can chat freely.");
-      else showSubscribePopup();
-    } else showSubscribePopup();
-  } catch(e) { console.error(e); showSubscribePopup(); }
+    const res=await fetch(`${BACKEND_URL}/access/${userAddress}`);
+    if(res.ok){ const data=await res.json(); subscribed=data.access; if(subscribed) addMessage("left","✅ Subscription active. You can chat freely."); else showSubscribePopup(); }
+    else showSubscribePopup();
+  } catch(e){ console.error(e); showSubscribePopup(); }
 }
 
 /* ================= SUBSCRIBE POPUP ================= */
-function showSubscribePopup() {
-  if(document.getElementById("subscribePopup")) return; // only one
-  const popup = document.createElement("div");
-  popup.id = "subscribePopup";
-  popup.className = "subscribe-popup";
-  popup.innerHTML = `<span>🔒 Subscribe to unlock premium support:</span>`;
-  
-  const monthlyBtn = document.createElement("button");
-  monthlyBtn.className = "monthly";
-  monthlyBtn.textContent = `Monthly - ${MONTHLY_PRICE} $TRUST`;
-  monthlyBtn.onclick = () => paySubscription(MONTHLY_PRICE);
+function showSubscribePopup(){
+  if(document.getElementById("subscribePopup")) return;
+  const popup=document.createElement("div");
+  popup.id="subscribePopup";
+  popup.className="subscribe-popup";
+  popup.innerHTML=`<span>🔒 Subscribe to unlock premium support:</span>`;
 
-  const yearlyBtn = document.createElement("button");
-  yearlyBtn.className = "yearly";
-  yearlyBtn.textContent = `Yearly - ${YEARLY_PRICE} $TRUST`;
-  yearlyBtn.onclick = () => paySubscription(YEARLY_PRICE);
+  const monthlyBtn=document.createElement("button");
+  monthlyBtn.className="monthly";
+  monthlyBtn.textContent=`Monthly - ${MONTHLY_PRICE} $TRUST`;
+  monthlyBtn.onclick=()=>paySubscription(MONTHLY_PRICE);
+
+  const yearlyBtn=document.createElement("button");
+  yearlyBtn.className="yearly";
+  yearlyBtn.textContent=`Yearly - ${YEARLY_PRICE} $TRUST`;
+  yearlyBtn.onclick=()=>paySubscription(YEARLY_PRICE);
 
   popup.appendChild(monthlyBtn);
   popup.appendChild(yearlyBtn);
@@ -279,60 +267,51 @@ function showSubscribePopup() {
 }
 
 /* ================= PAY SUBSCRIPTION ================= */
-async function paySubscription(amount) {
-  try {
-    addMessage("left","💳 Confirming payment in wallet...");
-    const trust = new ethers.Contract(
+async function paySubscription(amount){
+  try{
+    addMessage("left","💳 Confirm payment in wallet...");
+    const trust=new ethers.Contract(
       "0xTRUST_TOKEN_ADDRESS", // replace with real $TRUST token
       ["function transfer(address,uint256) returns (bool)"],
       signer
     );
-    const tx = await trust.transfer(TREASURY_ADDRESS, ethers.parseUnits(amount.toString(), 18));
+    const tx=await trust.transfer(TREASURY_ADDRESS,ethers.parseUnits(amount.toString(),18));
     await tx.wait();
-    subscribed = true;
+    subscribed=true;
     addMessage("left","✅ Subscription successful!");
-    const popup = document.getElementById("subscribePopup");
+    const popup=document.getElementById("subscribePopup");
     if(popup) popup.remove();
-  } catch(e) {
-    console.error(e);
-    addMessage("left","❌ Payment failed or rejected.");
-  }
+  } catch(e){ console.error(e); addMessage("left","❌ Payment failed or rejected."); }
 }
 
 /* ================= SEND MESSAGE ================= */
-sendBtn.onclick = async () => {
-  const text = input.value.trim();
+sendBtn.onclick=async ()=>{
+  const text=input.value.trim();
   if(!text) return;
 
-  // AI greeting / pricing only if message includes "price" or "hello"
-  if(/hello/i.test(text)) { addMessage("left","Hello! Ask about Intuition features or subscriptions."); input.value=""; return; }
-  if(/price/i.test(text)) { addMessage("left",`Monthly: ${MONTHLY_PRICE} $TRUST, Yearly: ${YEARLY_PRICE} $TRUST.`); input.value=""; return; }
-  if(/subscribe/i.test(text)) { showSubscribePopup(); input.value=""; return; }
+  // AI greeting/pricing only
+  if(/hello/i.test(text)){ addMessage("left","Hello! Ask about Intuition features or subscriptions."); input.value=""; return; }
+  if(/price/i.test(text)){ addMessage("left",`Monthly: ${MONTHLY_PRICE} $TRUST, Yearly: ${YEARLY_PRICE} $TRUST.`); input.value=""; return; }
+  if(/subscribe/i.test(text)){ showSubscribePopup(); input.value=""; return; }
 
-  addMessage("right", text);
-  input.value = "";
+  addMessage("right",text);
+  input.value="";
+  if(!subscribed) showSubscribePopup();
 
-  if(!subscribed) { showSubscribePopup(); }
-
-  // send to backend for real answers
-  try {
-    await fetch(`${BACKEND_URL}/message`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ wallet: userAddress, content: text })
-    });
-  } catch(e) { console.error(e); }
+  // Send to backend for real answers
+  try{ await fetch(`${BACKEND_URL}/message`,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({wallet:userAddress,content:text}) }); }
+  catch(e){ console.error(e); }
 };
 
 /* ================= POLLING BACKEND FOR RESPONSES ================= */
-setInterval(async () => {
+setInterval(async()=>{
   if(!userAddress) return;
-  try {
-    const res = await fetch(`${BACKEND_URL}/conversation/${userAddress}`);
-    const msgs = await res.json();
-    chatBody.innerHTML = "";
+  try{
+    const res=await fetch(`${BACKEND_URL}/conversation/${userAddress}`);
+    const msgs=await res.json();
+    chatBody.innerHTML="";
     msgs.forEach(m=>addMessage(m.sender==="user"?"right":"left",m.content));
-  } catch(e) { console.error(e); }
+  }catch(e){ console.error(e); }
 },4000);
 
 </script>

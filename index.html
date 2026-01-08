@@ -16,6 +16,7 @@ body {
   justify-content: center;
 }
 
+/* ====== WRAPPER ====== */
 .chat-wrapper {
   width: 100%;
   max-width: 380px;
@@ -28,12 +29,21 @@ body {
   flex-direction: column;
   padding: 16px;
   position: relative;
+  transition: all .3s ease;
 }
 
+/* ADMIN MODE */
+.chat-wrapper.admin {
+  max-width: 900px;
+  flex-direction: row;
+  gap: 12px;
+}
+
+/* ====== HEADER ====== */
 .chat-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
   color: white;
   font-weight: 600;
   padding-bottom: 12px;
@@ -61,6 +71,45 @@ body {
   color: white;
   font-size: 12px;
   cursor: pointer;
+}
+
+/* ====== ADMIN USERS ====== */
+.users-panel {
+  width: 220px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 18px;
+  padding: 12px;
+  color: white;
+  display: none;
+  flex-direction: column;
+}
+
+.users-panel h4 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  opacity: .7;
+}
+
+.user-item {
+  padding: 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.user-item:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.user-item.active {
+  background: rgba(10,132,255,.4);
+}
+
+/* ====== CHAT ====== */
+.chat-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .chat-body {
@@ -96,14 +145,17 @@ body {
   border-radius: 18px;
 }
 
-.message.right .bubble { background: rgba(255,255,255,0.12); }
+.message.admin .bubble {
+  background: rgba(10,132,255,.35);
+}
 
 .time {
   font-size: 10px;
-  opacity: 0.6;
+  opacity: .6;
   margin-top: 4px;
 }
 
+/* ====== INPUT ====== */
 .chat-input {
   display: flex;
   gap: 10px;
@@ -129,191 +181,150 @@ body {
   color: white;
   cursor: pointer;
 }
-
-.subscribe-popup {
-  position: absolute;
-  bottom: 70px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(20,30,40,0.9);
-  padding: 12px 16px;
-  border-radius: 16px;
-  display: flex;
-  gap: 10px;
-  flex-direction: column;
-  color: white;
-  z-index: 10;
-}
-
-.subscribe-popup button {
-  cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 12px;
-  border: none;
-  font-weight: 600;
-}
-
-.monthly { background: #0a84ff; }
-.yearly { background: #005eff; }
 </style>
 </head>
 
 <body>
 
-<div class="chat-wrapper">
-  <div class="chat-header">
-    <div class="header-left">
-      <div class="logo-circle"></div>
-      <span>INTUITION</span>
+<div class="chat-wrapper" id="app">
+
+  <!-- USERS PANEL (ADMIN ONLY) -->
+  <div class="users-panel" id="usersPanel">
+    <h4>ACTIVE USERS</h4>
+    <div id="usersList"></div>
+  </div>
+
+  <!-- CHAT AREA -->
+  <div class="chat-area">
+    <div class="chat-header">
+      <div class="header-left">
+        <div class="logo-circle"></div>
+        <span>INTUITION</span>
+      </div>
+      <button class="connect-btn" id="connectBtn">Connect Wallet</button>
     </div>
-    <button class="connect-btn" id="connectBtn">Connect Wallet</button>
+
+    <div class="chat-body" id="chatBody"></div>
+
+    <div class="chat-input">
+      <input id="messageInput" placeholder="Type your message…" />
+      <button id="sendBtn">Send</button>
+    </div>
   </div>
 
-  <div class="chat-body" id="chatBody"></div>
-
-  <div class="chat-input">
-    <input id="messageInput" placeholder="Type a message..." />
-    <button id="sendBtn">Send</button>
-  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
 
 <script>
-/* ================= CONFIG ================= */
-const BACKEND_URL = "http://localhost:3000";
-const TREASURY_ADDRESS = "0x7738c4cf6F513898fBa4099A6732d1E6314eB912";
-const ADMIN_WALLET = TREASURY_ADDRESS.toLowerCase();
-const MONTHLY_PRICE = 50;
-const YEARLY_PRICE = 150;
+/* ===== CONFIG ===== */
+const BACKEND = "http://localhost:3000";
+const ADMIN_WALLET = "0x7738c4cf6F513898fBa4099A6732d1E6314eB912".toLowerCase();
 
-/* ================= GLOBALS ================= */
+/* ===== STATE ===== */
+let provider, signer, wallet;
+let isAdmin = false;
+let activeUser = null;
+
+/* ===== UI ===== */
+const app = document.getElementById("app");
 const chatBody = document.getElementById("chatBody");
+const usersPanel = document.getElementById("usersPanel");
+const usersList = document.getElementById("usersList");
 const input = document.getElementById("messageInput");
-const sendBtn = document.getElementById("sendBtn");
-const connectBtn = document.getElementById("connectBtn");
 
-let provider, signer, userAddress;
-let subscribed = false;
-
-/* ================= HELPERS ================= */
-function time() { return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
-function addMessage(side,text) {
-  const msg=document.createElement("div");
-  msg.className="message "+side;
-  if(side==="left"){ const avatar=document.createElement("div"); avatar.className="avatar"; avatar.textContent="I"; msg.appendChild(avatar); }
-  const bubble=document.createElement("div");
-  bubble.className="bubble";
-  bubble.innerHTML=`${text}<div class="time">${time()}</div>`;
+/* ===== HELPERS ===== */
+function addMessage(sender, text) {
+  const msg = document.createElement("div");
+  msg.className = `message ${sender === "user" ? "right" : ""} ${sender === "admin" ? "admin" : ""}`;
+  if (sender !== "user") {
+    const av = document.createElement("div");
+    av.className = "avatar";
+    av.textContent = sender === "admin" ? "A" : "I";
+    msg.appendChild(av);
+  }
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.innerHTML = text;
   msg.appendChild(bubble);
   chatBody.appendChild(msg);
-  chatBody.scrollTop=chatBody.scrollHeight;
+  chatBody.scrollTop = chatBody.scrollHeight;
 }
 
-/* ================= INITIAL MESSAGE ================= */
-addMessage("left","👋 Welcome to Intuition Support. Connect your wallet to start.");
+/* ===== CONNECT ===== */
+document.getElementById("connectBtn").onclick = async () => {
+  provider = new ethers.BrowserProvider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
+  signer = await provider.getSigner();
+  wallet = (await signer.getAddress()).toLowerCase();
 
-/* ================= MULTI-WALLET CONNECT ================= */
-async function connectWallet() {
-  try {
-    // 1️⃣ Browser wallet (MetaMask, Coinbase, etc)
-    if(window.ethereum){
-      provider = new ethers.BrowserProvider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-    } else { addMessage("left","❌ No compatible wallet found."); return; }
+  document.getElementById("connectBtn").textContent =
+    wallet.slice(0,6)+"..."+wallet.slice(-4);
 
-    signer = await provider.getSigner();
-    userAddress = (await signer.getAddress()).toLowerCase();
-    connectBtn.textContent = userAddress.slice(0,6)+"..."+userAddress.slice(-4);
-    addMessage("left","🔗 Wallet connected.");
-    await checkSubscription();
-
-  } catch(e) { console.error(e); addMessage("left","⚠️ Wallet connection failed."); }
-}
-
-connectBtn.onclick = connectWallet;
-
-/* ================= CHECK SUBSCRIPTION ================= */
-async function checkSubscription(){
-  if(userAddress===ADMIN_WALLET){ subscribed=true; addMessage("left","👑 Admin access granted. You can chat freely."); return; }
-  try {
-    const res=await fetch(`${BACKEND_URL}/access/${userAddress}`);
-    if(res.ok){ const data=await res.json(); subscribed=data.access; if(subscribed) addMessage("left","✅ Subscription active. You can chat freely."); else showSubscribePopup(); }
-    else showSubscribePopup();
-  } catch(e){ console.error(e); showSubscribePopup(); }
-}
-
-/* ================= SUBSCRIBE POPUP ================= */
-function showSubscribePopup(){
-  if(document.getElementById("subscribePopup")) return;
-  const popup=document.createElement("div");
-  popup.id="subscribePopup";
-  popup.className="subscribe-popup";
-  popup.innerHTML=`<span>🔒 Subscribe to unlock premium support:</span>`;
-
-  const monthlyBtn=document.createElement("button");
-  monthlyBtn.className="monthly";
-  monthlyBtn.textContent=`Monthly - ${MONTHLY_PRICE} $TRUST`;
-  monthlyBtn.onclick=()=>paySubscription(MONTHLY_PRICE);
-
-  const yearlyBtn=document.createElement("button");
-  yearlyBtn.className="yearly";
-  yearlyBtn.textContent=`Yearly - ${YEARLY_PRICE} $TRUST`;
-  yearlyBtn.onclick=()=>paySubscription(YEARLY_PRICE);
-
-  popup.appendChild(monthlyBtn);
-  popup.appendChild(yearlyBtn);
-  document.querySelector(".chat-wrapper").appendChild(popup);
-}
-
-/* ================= PAY SUBSCRIPTION ================= */
-async function paySubscription(amount){
-  try{
-    addMessage("left","💳 Confirm payment in wallet...");
-    const trust=new ethers.Contract(
-      "0xTRUST_TOKEN_ADDRESS", // replace with real $TRUST token
-      ["function transfer(address,uint256) returns (bool)"],
-      signer
-    );
-    const tx=await trust.transfer(TREASURY_ADDRESS,ethers.parseUnits(amount.toString(),18));
-    await tx.wait();
-    subscribed=true;
-    addMessage("left","✅ Subscription successful!");
-    const popup=document.getElementById("subscribePopup");
-    if(popup) popup.remove();
-  } catch(e){ console.error(e); addMessage("left","❌ Payment failed or rejected."); }
-}
-
-/* ================= SEND MESSAGE ================= */
-sendBtn.onclick=async ()=>{
-  const text=input.value.trim();
-  if(!text) return;
-
-  // AI greeting/pricing only
-  if(/hello/i.test(text)){ addMessage("left","Hello! Ask about Intuition features or subscriptions."); input.value=""; return; }
-  if(/price/i.test(text)){ addMessage("left",`Monthly: ${MONTHLY_PRICE} $TRUST, Yearly: ${YEARLY_PRICE} $TRUST.`); input.value=""; return; }
-  if(/subscribe/i.test(text)){ showSubscribePopup(); input.value=""; return; }
-
-  addMessage("right",text);
-  input.value="";
-  if(!subscribed) showSubscribePopup();
-
-  // Send to backend for real answers
-  try{ await fetch(`${BACKEND_URL}/message`,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({wallet:userAddress,content:text}) }); }
-  catch(e){ console.error(e); }
+  if (wallet === ADMIN_WALLET) enableAdmin();
+  else enableUser();
 };
 
-/* ================= POLLING BACKEND FOR RESPONSES ================= */
-setInterval(async()=>{
-  if(!userAddress) return;
-  try{
-    const res=await fetch(`${BACKEND_URL}/conversation/${userAddress}`);
-    const msgs=await res.json();
-    chatBody.innerHTML="";
-    msgs.forEach(m=>addMessage(m.sender==="user"?"right":"left",m.content));
-  }catch(e){ console.error(e); }
-},4000);
+/* ===== MODES ===== */
+function enableUser() {
+  addMessage("ai","👋 Welcome to Intuition. Ask your question.");
+}
 
+function enableAdmin() {
+  isAdmin = true;
+  app.classList.add("admin");
+  usersPanel.style.display = "flex";
+  addMessage("admin","👑 Admin dashboard active.");
+  loadUsers();
+}
+
+/* ===== ADMIN ===== */
+async function loadUsers() {
+  const res = await fetch(`${BACKEND}/admin/users`);
+  const users = await res.json();
+  usersList.innerHTML = "";
+  users.forEach(u => {
+    const div = document.createElement("div");
+    div.className = "user-item";
+    div.textContent = u.ens || u.wallet.slice(0,6)+"...";
+    div.onclick = () => selectUser(u.wallet, div);
+    usersList.appendChild(div);
+  });
+}
+
+async function selectUser(w, el) {
+  document.querySelectorAll(".user-item").forEach(i=>i.classList.remove("active"));
+  el.classList.add("active");
+  activeUser = w;
+  chatBody.innerHTML = "";
+  const res = await fetch(`${BACKEND}/admin/conversation/${w}`);
+  const msgs = await res.json();
+  msgs.forEach(m => addMessage(m.sender, m.content));
+}
+
+/* ===== SEND ===== */
+document.getElementById("sendBtn").onclick = async () => {
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = "";
+
+  if (isAdmin && activeUser) {
+    addMessage("admin", text);
+    await fetch(`${BACKEND}/admin/reply`, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({ to: activeUser, content: text })
+    });
+  } else {
+    addMessage("user", text);
+    await fetch(`${BACKEND}/message`, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({ wallet, content: text })
+    });
+  }
+};
 </script>
+
 </body>
 </html>

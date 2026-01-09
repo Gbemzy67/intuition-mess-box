@@ -149,6 +149,10 @@ body {
   background: rgba(10,132,255,.35);
 }
 
+.message.flagged .bubble {
+  background: rgba(255,0,0,.3);
+}
+
 .time {
   font-size: 10px;
   opacity: .6;
@@ -181,6 +185,33 @@ body {
   color: white;
   cursor: pointer;
 }
+
+/* ====== SUBSCRIBE POPUP ====== */
+.subscribe-popup {
+  position: absolute;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20,30,40,0.9);
+  padding: 12px 16px;
+  border-radius: 16px;
+  display: flex;
+  gap: 10px;
+  flex-direction: column;
+  color: white;
+  z-index: 10;
+}
+
+.subscribe-popup button {
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 600;
+}
+
+.monthly { background: #0a84ff; }
+.yearly { background: #005eff; }
 </style>
 </head>
 
@@ -215,32 +246,38 @@ body {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
-
 <script>
 /* ===== CONFIG ===== */
 const BACKEND = "http://localhost:3000";
 const ADMIN_WALLET = "0x7738c4cf6F513898fBa4099A6732d1E6314eB912".toLowerCase();
+const MONTHLY_PRICE = 50;
+const YEARLY_PRICE = 150;
+const POLL_INTERVAL = 3000;
 
 /* ===== STATE ===== */
 let provider, signer, wallet;
 let isAdmin = false;
 let activeUser = null;
+let subscribed = false;
 
-/* ===== UI ===== */
+/* ===== UI ELEMENTS ===== */
 const app = document.getElementById("app");
 const chatBody = document.getElementById("chatBody");
 const usersPanel = document.getElementById("usersPanel");
 const usersList = document.getElementById("usersList");
 const input = document.getElementById("messageInput");
+const connectBtn = document.getElementById("connectBtn");
 
 /* ===== HELPERS ===== */
-function addMessage(sender, text) {
+function addMessage(sender, text, flagged=false) {
   const msg = document.createElement("div");
-  msg.className = `message ${sender === "user" ? "right" : ""} ${sender === "admin" ? "admin" : ""}`;
-  if (sender !== "user") {
+  let cls = sender==="user"?"right": sender==="admin"?"admin":"";
+  if(flagged) cls += " flagged";
+  msg.className = `message ${cls}`;
+  if(sender!=="user"){
     const av = document.createElement("div");
     av.className = "avatar";
-    av.textContent = sender === "admin" ? "A" : "I";
+    av.textContent = sender==="admin"?"A":"I";
     msg.appendChild(av);
   }
   const bubble = document.createElement("div");
@@ -251,80 +288,164 @@ function addMessage(sender, text) {
   chatBody.scrollTop = chatBody.scrollHeight;
 }
 
-/* ===== CONNECT ===== */
-document.getElementById("connectBtn").onclick = async () => {
+/* ===== CONNECT WALLET ===== */
+connectBtn.onclick = async () => {
+  if(!window.ethereum) return addMessage("ai","❌ No wallet detected.");
   provider = new ethers.BrowserProvider(window.ethereum);
   await provider.send("eth_requestAccounts", []);
   signer = await provider.getSigner();
   wallet = (await signer.getAddress()).toLowerCase();
 
-  document.getElementById("connectBtn").textContent =
-    wallet.slice(0,6)+"..."+wallet.slice(-4);
+  connectBtn.textContent = wallet.slice(0,6)+"..."+wallet.slice(-4);
 
-  if (wallet === ADMIN_WALLET) enableAdmin();
+  if(wallet === ADMIN_WALLET) enableAdmin();
   else enableUser();
 };
 
 /* ===== MODES ===== */
-function enableUser() {
+function enableUser(){
+  isAdmin=false;
   addMessage("ai","👋 Welcome to Intuition. Ask your question.");
+  checkSubscription();
+  startUserPolling();
 }
 
-function enableAdmin() {
-  isAdmin = true;
+function enableAdmin(){
+  isAdmin=true;
   app.classList.add("admin");
-  usersPanel.style.display = "flex";
+  usersPanel.style.display="flex";
   addMessage("admin","👑 Admin dashboard active.");
   loadUsers();
+  startAdminPolling();
 }
 
-/* ===== ADMIN ===== */
-async function loadUsers() {
-  const res = await fetch(`${BACKEND}/admin/users`);
-  const users = await res.json();
-  usersList.innerHTML = "";
-  users.forEach(u => {
-    const div = document.createElement("div");
-    div.className = "user-item";
-    div.textContent = u.ens || u.wallet.slice(0,6)+"...";
-    div.onclick = () => selectUser(u.wallet, div);
-    usersList.appendChild(div);
-  });
+/* ===== SUBSCRIPTION ===== */
+async function checkSubscription(){
+  try{
+    const res = await fetch(`${BACKEND}/access/${wallet}`);
+    const data = await res.json();
+    subscribed = data.access;
+    if(!subscribed) showSubscribePopup();
+  }catch(e){ console.error(e); showSubscribePopup(); }
 }
 
-async function selectUser(w, el) {
+function showSubscribePopup(){
+  if(document.getElementById("subscribePopup")) return;
+  const popup=document.createElement("div");
+  popup.id="subscribePopup";
+  popup.className="subscribe-popup";
+  popup.innerHTML=`<span>🔒 Subscribe to unlock premium support:</span>`;
+
+  const monthlyBtn=document.createElement("button");
+  monthlyBtn.className="monthly";
+  monthlyBtn.textContent=`Monthly - ${MONTHLY_PRICE} $TRUST`;
+  monthlyBtn.onclick=()=> paySubscription(MONTHLY_PRICE);
+
+  const yearlyBtn=document.createElement("button");
+  yearlyBtn.className="yearly";
+  yearlyBtn.textContent=`Yearly - ${YEARLY_PRICE} $TRUST`;
+  yearlyBtn.onclick=()=> paySubscription(YEARLY_PRICE);
+
+  popup.appendChild(monthlyBtn);
+  popup.appendChild(yearlyBtn);
+  document.querySelector(".chat-wrapper").appendChild(popup);
+}
+
+async function paySubscription(amount){
+  try{
+    addMessage("ai","💳 Confirm payment in wallet...");
+    const trust=new ethers.Contract(
+      "0xTRUST_TOKEN_ADDRESS", // replace with real token
+      ["function transfer(address,uint256) returns (bool)"],
+      signer
+    );
+    const tx=await trust.transfer("0x7738c4cf6F513898fBa4099A6732d1E6314eB912",ethers.parseUnits(amount.toString(),18));
+    await tx.wait();
+    subscribed=true;
+    addMessage("ai","✅ Subscription successful!");
+    const popup=document.getElementById("subscribePopup");
+    if(popup) popup.remove();
+  }catch(e){ console.error(e); addMessage("ai","❌ Payment failed."); }
+}
+
+/* ===== POLLING ===== */
+function startUserPolling(){
+  setInterval(async()=>{
+    if(!wallet) return;
+    try{
+      const res = await fetch(`${BACKEND}/conversation/${wallet}`);
+      const msgs = await res.json();
+      chatBody.innerHTML="";
+      msgs.forEach(m=>addMessage(m.sender,m.content,m.flagged));
+    }catch(e){ console.error(e); }
+  },POLL_INTERVAL);
+}
+
+function startAdminPolling(){
+  setInterval(async()=>{
+    if(!wallet) return;
+    try{
+      const res = await fetch(`${BACKEND}/admin/users?wallet=${wallet}`);
+      const users = await res.json();
+      usersList.innerHTML="";
+      users.forEach(u=>{
+        const div=document.createElement("div");
+        div.className="user-item";
+        div.textContent = u.ens || u.wallet.slice(0,6)+"...";
+        if(u.flagged) div.style.background="rgba(255,0,0,0.3)";
+        div.onclick=()=> selectUser(u.wallet,div);
+        if(activeUser===u.wallet) div.classList.add("active");
+        usersList.appendChild(div);
+      });
+
+      if(activeUser){
+        const res2 = await fetch(`${BACKEND}/admin/conversation/${activeUser}?wallet=${wallet}`);
+        const msgs = await res2.json();
+        chatBody.innerHTML="";
+        msgs.forEach(m=>addMessage(m.sender,m.content,m.flagged));
+      }
+
+    }catch(e){ console.error(e); }
+  },POLL_INTERVAL);
+}
+
+/* ===== ADMIN SELECT USER ===== */
+async function selectUser(w,el){
   document.querySelectorAll(".user-item").forEach(i=>i.classList.remove("active"));
   el.classList.add("active");
-  activeUser = w;
-  chatBody.innerHTML = "";
-  const res = await fetch(`${BACKEND}/admin/conversation/${w}`);
-  const msgs = await res.json();
-  msgs.forEach(m => addMessage(m.sender, m.content));
+  activeUser=w;
+
+  try{
+    const res = await fetch(`${BACKEND}/admin/conversation/${w}?wallet=${wallet}`);
+    const msgs = await res.json();
+    chatBody.innerHTML="";
+    msgs.forEach(m=>addMessage(m.sender,m.content,m.flagged));
+  }catch(e){ console.error(e); }
 }
 
-/* ===== SEND ===== */
-document.getElementById("sendBtn").onclick = async () => {
-  const text = input.value.trim();
-  if (!text) return;
-  input.value = "";
+/* ===== SEND MESSAGE ===== */
+document.getElementById("sendBtn").onclick=async()=>{
+  const text=input.value.trim();
+  if(!text) return;
+  input.value="";
 
-  if (isAdmin && activeUser) {
+  if(isAdmin && activeUser){
     addMessage("admin", text);
     await fetch(`${BACKEND}/admin/reply`, {
       method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body:JSON.stringify({ to: activeUser, content: text })
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ admin: wallet, to: activeUser, content:text })
     });
-  } else {
+  }else{
+    if(!subscribed) { showSubscribePopup(); return; }
     addMessage("user", text);
     await fetch(`${BACKEND}/message`, {
       method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body:JSON.stringify({ wallet, content: text })
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ wallet, content:text })
     });
   }
 };
 </script>
-
 </body>
 </html>

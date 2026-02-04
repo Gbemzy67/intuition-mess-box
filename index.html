@@ -3,10 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <title>Intuition Chat</title>
-
 <style>
 * { box-sizing: border-box; font-family: system-ui, sans-serif; }
-
 body {
   margin: 0;
   height: 100vh;
@@ -15,7 +13,6 @@ body {
   align-items: center;
   justify-content: center;
 }
-
 .chat-wrapper {
   width: 100%;
   max-width: 380px;
@@ -30,192 +27,36 @@ body {
   position: relative;
   transition: all .3s ease;
 }
-
-.chat-wrapper.admin {
-  max-width: 900px;
-  flex-direction: row;
-  gap: 12px;
-}
-
-.chat-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: white;
-  font-weight: 600;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.logo-circle {
-  width: 28px;
-  height: 28px;
-  border: 3px solid white;
-  border-radius: 50%;
-}
-
-.connect-btn {
-  padding: 6px 12px;
-  border-radius: 12px;
-  border: none;
-  background: #0a84ff;
-  color: white;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.users-panel {
-  width: 220px;
-  background: rgba(255,255,255,0.05);
-  border-radius: 18px;
-  padding: 12px;
-  color: white;
-  display: none;
-  flex-direction: column;
-}
-
-.users-panel h4 {
-  margin: 0 0 10px;
-  font-size: 13px;
-  opacity: .7;
-}
-
-.user-item {
-  padding: 8px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.user-item:hover {
-  background: rgba(255,255,255,0.08);
-}
-
-.user-item.active {
-  background: rgba(10,132,255,.4);
-}
-
-.chat-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.chat-body {
-  flex: 1;
-  padding: 16px 0;
-  overflow-y: auto;
-}
-
-.message {
-  display: flex;
-  margin-bottom: 14px;
-}
-
+.chat-wrapper.admin { max-width: 900px; flex-direction: row; gap: 12px; }
+.chat-header { display: flex; justify-content: space-between; align-items: center; color: white; font-weight: 600; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);}
+.header-left { display: flex; align-items: center; gap: 10px; }
+.logo-circle { width: 28px; height: 28px; border: 3px solid white; border-radius: 50%; }
+.connect-btn { padding: 6px 12px; border-radius: 12px; border: none; background: #0a84ff; color: white; font-size: 12px; cursor: pointer; }
+.users-panel { width: 220px; background: rgba(255,255,255,0.05); border-radius: 18px; padding: 12px; color: white; display: none; flex-direction: column; }
+.users-panel h4 { margin: 0 0 10px; font-size: 13px; opacity: .7; }
+.user-item { padding: 8px; border-radius: 10px; cursor: pointer; font-size: 12px; }
+.user-item:hover { background: rgba(255,255,255,0.08); }
+.user-item.active { background: rgba(10,132,255,.4); }
+.chat-area { flex: 1; display: flex; flex-direction: column; }
+.chat-body { flex: 1; padding: 16px 0; overflow-y: auto; }
+.message { display: flex; margin-bottom: 14px; }
 .message.right { justify-content: flex-end; }
-
-.avatar {
-  width: 34px;
-  height: 34px;
-  background: linear-gradient(135deg, #7b5cff, #4b2cff);
-  border-radius: 50%;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 10px;
-}
-
-.bubble {
-  max-width: 70%;
-  padding: 12px 16px;
-  background: rgba(255,255,255,0.08);
-  color: white;
-  border-radius: 18px;
-}
-
-.message.admin .bubble {
-  background: rgba(10,132,255,.35);
-}
-
-.message.flagged .bubble {
-  background: rgba(255,0,0,.3);
-}
-
-.time {
-  font-size: 10px;
-  opacity: .6;
-  margin-top: 4px;
-}
-
-.chat-input {
-  display: flex;
-  gap: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255,255,255,0.1);
-}
-
-.chat-input input {
-  flex: 1;
-  padding: 12px 14px;
-  border-radius: 18px;
-  border: none;
-  outline: none;
-  background: rgba(255,255,255,0.08);
-  color: white;
-}
-
-.chat-input button {
-  padding: 12px 18px;
-  border-radius: 18px;
-  border: none;
-  background: linear-gradient(135deg, #0a84ff, #005eff);
-  color: white;
-  cursor: pointer;
-}
-
-.subscribe-popup {
-  position: absolute;
-  bottom: 70px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(20,30,40,0.9);
-  padding: 12px 16px;
-  border-radius: 16px;
-  display: flex;
-  gap: 10px;
-  flex-direction: column;
-  color: white;
-  z-index: 10;
-}
-
-.subscribe-popup button {
-  cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 12px;
-  border: none;
-  font-weight: 600;
-}
-
-.monthly { background: #0a84ff; }
-.yearly { background: #005eff; }
+.avatar { width: 34px; height: 34px; background: linear-gradient(135deg, #7b5cff, #4b2cff); border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; margin-right: 10px; }
+.bubble { max-width: 70%; padding: 12px 16px; background: rgba(255,255,255,0.08); color: white; border-radius: 18px; }
+.message.admin .bubble { background: rgba(10,132,255,.35); }
+.message.flagged .bubble { background: rgba(255,0,0,.3); }
+.time { font-size: 10px; opacity: .6; margin-top: 4px; }
+.chat-input { display: flex; gap: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); }
+.chat-input input { flex: 1; padding: 12px 14px; border-radius: 18px; border: none; outline: none; background: rgba(255,255,255,0.08); color: white; }
+.chat-input button { padding: 12px 18px; border-radius: 18px; border: none; background: linear-gradient(135deg, #0a84ff, #005eff); color: white; cursor: pointer; }
 </style>
 </head>
-
 <body>
 <div class="chat-wrapper" id="app">
-
   <div class="users-panel" id="usersPanel">
     <h4>ACTIVE USERS</h4>
     <div id="usersList"></div>
   </div>
-
   <div class="chat-area">
     <div class="chat-header">
       <div class="header-left">
@@ -224,11 +65,9 @@ body {
       </div>
       <button class="connect-btn" id="connectBtn">Connect Wallet</button>
     </div>
-
     <div class="chat-body" id="chatBody"></div>
-
     <div class="chat-input">
-      <input id="messageInput" placeholder="Type your message…" />
+      <input id="messageInput" placeholder="Ask about Intuition…" />
       <button id="sendBtn">Send</button>
     </div>
   </div>
@@ -239,23 +78,19 @@ body {
 /* ================= CONFIG ================= */
 const BACKEND = "http://localhost:3000";
 const ADMIN_WALLET = "0x7738c4cf6F513898fBa4099A6732d1E6314eB912".toLowerCase();
-const TRUST_TOKEN_ADDRESS = "0xYOUR_REAL_TRUST_TOKEN_ADDRESS"; // <-- replace
-const TREASURY_ADDRESS = ADMIN_WALLET;
-const MONTHLY_PRICE = 50;
-const YEARLY_PRICE = 150;
 const POLL_INTERVAL = 3000;
-
 const INTUITION_CHAIN = {
-  chainId: "0x1234", // replace with real chainId
+  chainId: "0x1234",
   chainName: "Intuition Network",
-  rpcUrls: ["https://rpc.intuition.network"], // replace with actual RPC
+  rpcUrls: ["https://rpc.intuition.network"],
   nativeCurrency: { name: "INT", symbol: "INT", decimals: 18 },
   blockExplorerUrls: ["https://explorer.intuition.network"]
 };
+const OPENAI_KEY = "YOUR_OPENAI_KEY"; // replace with your key
 
 /* ================= STATE ================= */
 let provider, signer, wallet;
-let isAdmin=false, activeUser=null, subscribed=false;
+let isAdmin=false, activeUser=null;
 
 /* ================= ELEMENTS ================= */
 const app = document.getElementById("app");
@@ -268,7 +103,7 @@ const connectBtn = document.getElementById("connectBtn");
 /* ================= HELPERS ================= */
 function addMessage(sender, text, flagged=false){
   const msg=document.createElement("div");
-  let cls = sender==="user"?"right":sender==="admin"?"admin":"";
+  let cls = sender==="user"?"right":sender==="admin"?"admin":"";  
   if(flagged) cls+=" flagged";
   msg.className="message "+cls;
   if(sender!=="user"){
@@ -288,10 +123,7 @@ function addMessage(sender, text, flagged=false){
 /* ================= NETWORK CHECK ================= */
 async function ensureNetworkPopup(){
   try{
-    await window.ethereum.request({
-      method: "wallet_switchEthereumChain",
-      params:[{ chainId: INTUITION_CHAIN.chainId }]
-    });
+    await window.ethereum.request({ method: "wallet_switchEthereumChain", params:[{ chainId: INTUITION_CHAIN.chainId }] });
     return true;
   }catch(e){
     if(e.code===4902){
@@ -315,19 +147,15 @@ connectBtn.onclick=async()=>{
   signer = await provider.getSigner();
   wallet = (await signer.getAddress()).toLowerCase();
   connectBtn.textContent=wallet.slice(0,6)+"..."+wallet.slice(-4);
-
-  if(wallet===ADMIN_WALLET) enableAdmin(); 
-  else enableUser();
+  if(wallet===ADMIN_WALLET) enableAdmin(); else enableUser();
 };
 
 /* ================= ENABLE MODES ================= */
 function enableUser(){
   isAdmin=false;
-  addMessage("ai","👋 Welcome! Ask your question.");
-  checkSubscription();
+  addMessage("ai","👋 Welcome! Ask me anything about the Intuition project.");
   startUserPolling();
 }
-
 function enableAdmin(){
   isAdmin=true;
   app.classList.add("admin");
@@ -335,59 +163,6 @@ function enableAdmin(){
   addMessage("admin","👑 Admin dashboard active.");
   loadUsers();
   startAdminPolling();
-}
-
-/* ================= SUBSCRIPTION ================= */
-async function checkSubscription(){
-  try{
-    const res=await fetch(`${BACKEND}/access/${wallet}`);
-    const data=await res.json();
-    subscribed=data.access;
-    if(!subscribed) showSubscribePopup();
-  }catch(e){ console.error(e); showSubscribePopup(); }
-}
-
-function showSubscribePopup(){
-  if(document.getElementById("subscribePopup")) return;
-  const popup=document.createElement("div");
-  popup.id="subscribePopup";
-  popup.className="subscribe-popup";
-  popup.innerHTML="<span>🔒 Subscribe to unlock premium support:</span>";
-
-  const monthlyBtn=document.createElement("button");
-  monthlyBtn.className="monthly";
-  monthlyBtn.textContent=`Monthly - ${MONTHLY_PRICE} $TRUST`;
-  monthlyBtn.onclick=()=>paySubscription(MONTHLY_PRICE);
-
-  const yearlyBtn=document.createElement("button");
-  yearlyBtn.className="yearly";
-  yearlyBtn.textContent=`Yearly - ${YEARLY_PRICE} $TRUST`;
-  yearlyBtn.onclick=()=>paySubscription(YEARLY_PRICE);
-
-  popup.appendChild(monthlyBtn);
-  popup.appendChild(yearlyBtn);
-  document.querySelector(".chat-wrapper").appendChild(popup);
-}
-
-async function paySubscription(amount){
-  try{
-    const ok = await ensureNetworkPopup();
-    if(!ok) return;
-
-    addMessage("ai","💳 Confirm payment in wallet...");
-    const ERC20_ABI=[
-      "function transfer(address,uint256) returns (bool)",
-      "function decimals() view returns (uint8)"
-    ];
-    const trust=new ethers.Contract(TRUST_TOKEN_ADDRESS,ERC20_ABI,signer);
-    const decimals=await trust.decimals();
-    const tx=await trust.transfer(TREASURY_ADDRESS,ethers.parseUnits(amount.toString(),decimals));
-    await tx.wait();
-    subscribed=true;
-    addMessage("ai","✅ Subscription successful!");
-    const popup=document.getElementById("subscribePopup");
-    if(popup) popup.remove();
-  }catch(e){ console.error(e); addMessage("ai","❌ Payment failed or rejected."); }
 }
 
 /* ================= POLLING ================= */
@@ -402,7 +177,6 @@ function startUserPolling(){
     }catch(e){ console.error(e); }
   },POLL_INTERVAL);
 }
-
 function startAdminPolling(){
   setInterval(async()=>{
     if(!wallet) return;
@@ -419,7 +193,6 @@ function startAdminPolling(){
         if(activeUser===u.wallet) div.classList.add("active");
         usersList.appendChild(div);
       });
-
       if(activeUser){
         const res2 = await fetch(`${BACKEND}/admin/conversation/${activeUser}?wallet=${wallet}`);
         const msgs = await res2.json();
@@ -429,13 +202,10 @@ function startAdminPolling(){
     }catch(e){ console.error(e); }
   },POLL_INTERVAL);
 }
-
-/* ================= SELECT USER (ADMIN) ================= */
 async function selectUser(w,el){
   document.querySelectorAll(".user-item").forEach(i=>i.classList.remove("active"));
   el.classList.add("active");
   activeUser=w;
-
   try{
     const res=await fetch(`${BACKEND}/admin/conversation/${w}?wallet=${wallet}`);
     const msgs=await res.json();
@@ -449,7 +219,6 @@ document.getElementById("sendBtn").onclick=async()=>{
   const text=input.value.trim();
   if(!text) return;
   input.value="";
-
   if(isAdmin && activeUser){
     addMessage("admin",text);
     await fetch(`${BACKEND}/admin/reply`,{
@@ -458,15 +227,37 @@ document.getElementById("sendBtn").onclick=async()=>{
       body:JSON.stringify({ admin: wallet, to: activeUser, content:text })
     });
   }else{
-    if(!subscribed) { showSubscribePopup(); return; }
     addMessage("user",text);
-    await fetch(`${BACKEND}/message`,{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({ wallet, content:text })
-    });
+    const aiReply = await getAIResponse(text);
+    addMessage("ai", aiReply);
   }
 };
+
+/* ================= OPENAI INTEGRATION ================= */
+async function getAIResponse(userText){
+  try{
+    const res = await fetch("https://api.openai.com/v1/chat/completions",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization": `Bearer ${OPENAI_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4",
+        messages:[
+          {role: "system", content: "You are Intuition's AI assistant. Answer questions about Intuition, their niche projects, and developments."},
+          {role: "user", content: userText}
+        ],
+        temperature: 0.7
+      })
+    });
+    const data = await res.json();
+    return data.choices[0].message.content;
+  }catch(e){
+    console.error(e);
+    return "🤖 Sorry, I'm having trouble answering right now.";
+  }
+}
 </script>
 </body>
 </html>

@@ -75,8 +75,7 @@ body {
 
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
 <script>
-/* ================= CONFIG ================= */
-const BACKEND = "http://localhost:3000";
+const BACKEND = "http://localhost:3000"; // your existing backend for admin/polling
 const ADMIN_WALLET = "0x7738c4cf6F513898fBa4099A6732d1E6314eB912".toLowerCase();
 const POLL_INTERVAL = 3000;
 const INTUITION_CHAIN = {
@@ -86,13 +85,9 @@ const INTUITION_CHAIN = {
   nativeCurrency: { name: "INT", symbol: "INT", decimals: 18 },
   blockExplorerUrls: ["https://explorer.intuition.network"]
 };
-const OPENAI_KEY = "YOUR_OPENAI_KEY"; // replace with your key
-
-/* ================= STATE ================= */
 let provider, signer, wallet;
 let isAdmin=false, activeUser=null;
 
-/* ================= ELEMENTS ================= */
 const app = document.getElementById("app");
 const chatBody = document.getElementById("chatBody");
 const usersPanel = document.getElementById("usersPanel");
@@ -100,7 +95,6 @@ const usersList = document.getElementById("usersList");
 const input = document.getElementById("messageInput");
 const connectBtn = document.getElementById("connectBtn");
 
-/* ================= HELPERS ================= */
 function addMessage(sender, text, flagged=false){
   const msg=document.createElement("div");
   let cls = sender==="user"?"right":sender==="admin"?"admin":"";  
@@ -120,7 +114,6 @@ function addMessage(sender, text, flagged=false){
   chatBody.scrollTop=chatBody.scrollHeight;
 }
 
-/* ================= NETWORK CHECK ================= */
 async function ensureNetworkPopup(){
   try{
     await window.ethereum.request({ method: "wallet_switchEthereumChain", params:[{ chainId: INTUITION_CHAIN.chainId }] });
@@ -139,7 +132,6 @@ async function ensureNetworkPopup(){
   }
 }
 
-/* ================= CONNECT WALLET ================= */
 connectBtn.onclick=async()=>{
   if(!window.ethereum) return addMessage("ai","❌ No wallet detected.");
   provider = new ethers.BrowserProvider(window.ethereum);
@@ -150,7 +142,6 @@ connectBtn.onclick=async()=>{
   if(wallet===ADMIN_WALLET) enableAdmin(); else enableUser();
 };
 
-/* ================= ENABLE MODES ================= */
 function enableUser(){
   isAdmin=false;
   addMessage("ai","👋 Welcome! Ask me anything about the Intuition project.");
@@ -165,7 +156,6 @@ function enableAdmin(){
   startAdminPolling();
 }
 
-/* ================= POLLING ================= */
 function startUserPolling(){
   setInterval(async()=>{
     if(!wallet) return;
@@ -177,6 +167,7 @@ function startUserPolling(){
     }catch(e){ console.error(e); }
   },POLL_INTERVAL);
 }
+
 function startAdminPolling(){
   setInterval(async()=>{
     if(!wallet) return;
@@ -202,6 +193,7 @@ function startAdminPolling(){
     }catch(e){ console.error(e); }
   },POLL_INTERVAL);
 }
+
 async function selectUser(w,el){
   document.querySelectorAll(".user-item").forEach(i=>i.classList.remove("active"));
   el.classList.add("active");
@@ -214,7 +206,6 @@ async function selectUser(w,el){
   }catch(e){ console.error(e); }
 }
 
-/* ================= SEND MESSAGE ================= */
 document.getElementById("sendBtn").onclick=async()=>{
   const text=input.value.trim();
   if(!text) return;
@@ -231,31 +222,21 @@ document.getElementById("sendBtn").onclick=async()=>{
     const aiReply = await getAIResponse(text);
     addMessage("ai", aiReply);
   }
-};
+}
 
-/* ================= OPENAI INTEGRATION ================= */
+// ✅ AI integration via backend
 async function getAIResponse(userText){
   try{
-    const res = await fetch("https://api.openai.com/v1/chat/completions",{
+    const res = await fetch("http://localhost:3001/ai", {
       method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        "Authorization": `Bearer ${OPENAI_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4",
-        messages:[
-          {role: "system", content: "You are Intuition's AI assistant. Answer questions about Intuition, their niche projects, and developments."},
-          {role: "user", content: userText}
-        ],
-        temperature: 0.7
-      })
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ message: userText })
     });
     const data = await res.json();
-    return data.choices[0].message.content;
-  }catch(e){
+    return data.reply;
+  } catch(e){
     console.error(e);
-    return "🤖 Sorry, I'm having trouble answering right now.";
+    return "🤖 Sorry, AI is not responding right now.";
   }
 }
 </script>
